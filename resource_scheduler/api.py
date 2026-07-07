@@ -4,8 +4,15 @@ from frappe.utils import get_datetime
 @frappe.whitelist()
 def get_scheduling_data():
     # 1. Fetch Engineers (Groups)
-    engineers = frappe.get_all("Resource Engineer", 
-        fields=["name as id", "engineer_name as content", "skillset as nestedGroups"])
+    # NOTE: do not name a field "nestedGroups" — vis-timeline reserves that
+    # property for an array of sub-group IDs. Using a plain skillset string
+    # there breaks Timeline's internal group processing.
+    engineers = frappe.get_all("Resource Engineer",
+        fields=["name as id", "engineer_name as content", "skillset"])
+
+    for group in engineers:
+        if group.get("skillset"):
+            group["content"] = f"{group['content']} ({group['skillset']})"
         
     # 2. Fetch Allocations (Items) — linked to Task (and its subtasks via Task.parent_task)
     allocations = frappe.get_all("Resource Allocation Block",
@@ -40,14 +47,3 @@ def update_block_time(block_id, start, end, group_id=None):
 
         frappe.publish_realtime('schedule_updated', {
             "message": f"Your schedule for {task_subject} has been updated.",
-            "task": doc.task
-        }, user=engineer_user)
-
-        frappe.get_doc({
-            "doctype": "Notification Log",
-            "for_user": engineer_user,
-            "subject": f"Schedule Shift: {task_subject}",
-            "type": "Alert"
-        }).insert(ignore_permissions=True)
-
-    return {"status": "success"}
