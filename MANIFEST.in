@@ -1,1 +1,10 @@
-
+include python_package_include.txt
+recursive-include resource_scheduler *.html
+recursive-include resource_scheduler *.ico
+recursive-include resource_scheduler *.js
+recursive-include resource_scheduler *.css
+recursive-include resource_scheduler *.png
+recursive-include resource_scheduler *.jpg
+recursive-include resource_scheduler *.svg
+recursive-include resource_scheduler *.txt
+recursive-include resource_scheduler *.json
