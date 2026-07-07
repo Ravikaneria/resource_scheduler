@@ -4,7 +4,7 @@ from frappe.utils import get_datetime
 @frappe.whitelist()
 def get_scheduling_data():
     # 1. Fetch Engineers (Groups)
-    # NOTE: do not name a field "nestedGroups" — vis-timeline reserves that
+    # NOTE: do not name a field "nestedGroups" -- vis-timeline reserves that
     # property for an array of sub-group IDs. Using a plain skillset string
     # there breaks Timeline's internal group processing.
     engineers = frappe.get_all("Resource Engineer",
@@ -13,8 +13,8 @@ def get_scheduling_data():
     for group in engineers:
         if group.get("skillset"):
             group["content"] = f"{group['content']} ({group['skillset']})"
-        
-    # 2. Fetch Allocations (Items) — linked to Task (and its subtasks via Task.parent_task)
+
+    # 2. Fetch Allocations (Items) -- linked to Task (and its subtasks via Task.parent_task)
     allocations = frappe.get_all("Resource Allocation Block",
         fields=[
             "name as id",
@@ -29,7 +29,7 @@ def get_scheduling_data():
 
     for item in allocations:
         item['style'] = f"background-color: {item['color'] or '#3182ce'}; color: white; border-radius: 4px;"
-        
+
     return {"groups": engineers, "items": allocations}
 
 @frappe.whitelist()
@@ -40,10 +40,21 @@ def update_block_time(block_id, start, end, group_id=None):
     if group_id:
         doc.engineer = group_id
     doc.save()
-    
+
     engineer_user = frappe.db.get_value("Resource Engineer", doc.engineer, "user_id")
     if engineer_user:
         task_subject = frappe.db.get_value("Task", doc.task, "subject") or doc.task
 
         frappe.publish_realtime('schedule_updated', {
             "message": f"Your schedule for {task_subject} has been updated.",
+            "task": doc.task
+        }, user=engineer_user)
+
+        frappe.get_doc({
+            "doctype": "Notification Log",
+            "for_user": engineer_user,
+            "subject": f"Schedule Shift: {task_subject}",
+            "type": "Alert"
+        }).insert(ignore_permissions=True)
+
+    return {"status": "success"}
